@@ -3,6 +3,15 @@ from sqlalchemy import text
 from database.postgres_sql import get_engine
 
 
+def _as_text(value) -> str | None:
+    """Normalize a risk/growth field (str, list, or None) into plain text."""
+    if not value:
+        return None
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value)
+    return str(value)
+
+
 def save_metrics(
     company: str,
     year: int,
@@ -55,8 +64,8 @@ def save_metrics(
         "cash_flow": metrics.get("Cash Flow from Operating Activities") or metrics.get("cash_flow"),
         "total_assets": metrics.get("Total Assets") or metrics.get("total_assets"),
         "total_liabilities": metrics.get("Total Liabilities") or metrics.get("total_liabilities"),
-        "risk_factors": "\n".join(metrics.get("Top Risk Factors", []) or metrics.get("risk_factors", [])),
-        "growth_drivers": "\n".join(metrics.get("Top Growth Drivers", []) or metrics.get("growth_drivers", []))
+        "risk_factors": _as_text(metrics.get("Top Risk Factors") or metrics.get("risk_factors")),
+        "growth_drivers": _as_text(metrics.get("Top Growth Drivers") or metrics.get("growth_drivers"))
     }
 
     with engine.begin() as connection:

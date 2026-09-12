@@ -26,11 +26,12 @@ def get_engine(database: str | None = None):
     # URL-encode credentials to handle special characters (e.g., @ in password)
     encoded_user = quote(user, safe="")
     encoded_password = quote(password, safe="")
+    sslmode = os.getenv("POSTGRES_SSLMODE", "prefer")
 
     connection_string = (
         f"postgresql+psycopg2://"
         f"{encoded_user}:{encoded_password}@{host}:{port}/{database}"
-        "?sslmode=require"
+        f"?sslmode={sslmode}"
     )
 
     return create_engine(connection_string)
@@ -56,7 +57,7 @@ def create_database() -> None:
             database="postgres",
             user=user,
             password=password,
-            sslmode="require"
+            sslmode=os.getenv("POSTGRES_SSLMODE", "prefer")
         )
         # Enable autocommit mode before executing CREATE DATABASE
         conn.autocommit = True

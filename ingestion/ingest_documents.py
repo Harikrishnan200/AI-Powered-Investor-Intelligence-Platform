@@ -2,14 +2,13 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from langchain_openai import AzureOpenAIEmbeddings
 
 from ingestion.pdf_to_markdown import PDFToMarkdownConverter
 from ingestion.semantic_chunker import chunk_markdown
-from vectorstore.azure_ai_search import AzureAISearchVectorStore
+from llm.embeddings import FastEmbedEmbeddings
+from vectorstore.qdrant_store import QdrantVectorStore
 from rag.kpi_extractor_rag import extract_financial_metrics
 from database.save_metrics import save_metrics
-from vectorstore.azure_ai_search import Retriever
 
 load_dotenv()
 
@@ -72,7 +71,7 @@ def ingest_document(
 
     # Extract financial metrics using the newly ingested data
     metrics = extract_financial_metrics(
-        retriever=Retriever(vector_store.client),
+        retriever=vector_store.as_retriever(embeddings),
         company=company,
         year=int(year) if year.isdigit() else None
     )
@@ -86,17 +85,10 @@ def ingest_directory(input_dir: str) -> None:
     """
     Ingest all PDFs from a directory.
     """
-    embeddings = AzureOpenAIEmbeddings(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION")
-    )
+    embeddings = FastEmbedEmbeddings()
 
-    vector_store = AzureAISearchVectorStore(
-        endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
-        api_key=os.getenv("AZURE_SEARCH_API_KEY"),
-        index_name=os.getenv("AZURE_SEARCH_INDEX_NAME")
+    vector_store = QdrantVectorStore(
+        collection_name=os.getenv("QDRANT_COLLECTION", "investor-intelligence")
     )
 
     pdf_files = list(Path(input_dir).glob("*.pdf"))

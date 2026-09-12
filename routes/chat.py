@@ -2,8 +2,9 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from vectorstore.azure_ai_search import AzureAISearchVectorStore, Retriever
-from llm.azure_openai import get_openai_client
+from llm.embeddings import FastEmbedEmbeddings
+from llm.groq_llm import DEFAULT_MODEL, get_groq_client
+from vectorstore.qdrant_store import QdrantVectorStore
 
 router = APIRouter()
 
@@ -16,12 +17,10 @@ class ChatRequest(BaseModel):
 async def chat(request: ChatRequest):
     try:
         # Initialize vector store and retriever
-        vector_store = AzureAISearchVectorStore(
-            endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
-            api_key=os.getenv("AZURE_SEARCH_API_KEY"),
-            index_name=os.getenv("AZURE_SEARCH_INDEX_NAME")
+        vector_store = QdrantVectorStore(
+            collection_name=os.getenv("QDRANT_COLLECTION", "investor-intelligence")
         )
-        retriever = Retriever(vector_store.client)
+        retriever = vector_store.as_retriever(FastEmbedEmbeddings())
 
         # Retrieve relevant context
         context = ""
@@ -40,9 +39,9 @@ async def chat(request: ChatRequest):
         # Build chat prompt – include retrieved context and the user question
         prompt = f"You are an expert financial analyst. Use the following context from corporate reports to answer the user's question. If the context does not contain relevant information, politely indicate that you do not have enough data.\n\nContext:\n{context}\n\nUser Question: {request.question}\n\nAnswer:"
 
-        client = get_openai_client()
+        client = get_groq_client()
         response = client.chat.completions.create(
-            model=os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT"),
+            model=os.getenv("GROQ_MODEL", DEFAULT_MODEL),
             messages=[{"role": "user", "content": prompt}]
         )
         answer = response.choices[0].message.content

@@ -1,11 +1,11 @@
 import os
-from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, field_validator, Field
 
-from llm.azure_openai import get_structured_completion
-from vectorstore.azure_ai_search import AzureAISearchVectorStore
+from llm.embeddings import FastEmbedEmbeddings
+from llm.groq_llm import get_structured_completion
+from vectorstore.qdrant_store import QdrantVectorStore, Retriever
 
 load_dotenv()
 
@@ -21,58 +21,15 @@ class FinancialMetrics(BaseModel):
     growth_drivers: str | list | None = Field(None, alias="Top Growth Drivers")
 
 
-class Retriever:
-    def __init__(self, client):
-        self.client = client
-
-    def invoke(
-        self,
-        query: str,
-        company: str | None = None,
-        year: int | None = None,
-        top_k: int = 20
-    ) -> list:
-        """
-        Retrieve relevant chunks from Azure AI Search.
-        """
-        filter_expr = None
-
-        if company and year:
-            filter_expr = (
-                f"company eq '{company}' "
-                f"and year eq '{year}'"
-            )
-
-        results = (
-            self.client.search(
-                search_text=query,
-                top=top_k,
-                filter=filter_expr
-            )
-            if filter_expr
-            else self.client.search(
-                search_text=query,
-                top=top_k
-            )
-        )
-
-        documents = []
-
-        for result in results:
-            content = result.get("content", "")
-            documents.append(
-                SimpleNamespace(
-                    page_content=content
-                )
-            )
-
-        return documents
+# Groq's free tier caps requests at ~8000 tokens/minute, so context is kept small.
+MAX_CONTEXT_CHARS = 10000
 
 
 def retrieve_context(
     retriever: Retriever,
     company: str,
-    year: int
+    year: int,
+    top_k: int = 6
 ) -> str:
     """
     Retrieve broad financial context from the vector store.
@@ -92,13 +49,15 @@ def retrieve_context(
         query=query,
         company=company,
         year=year,
-        top_k=20
+        top_k=top_k
     )
-    # print(documents)
-    return "\n\n".join(
+
+    context = "\n\n".join(
         doc.page_content
         for doc in documents
     )
+
+    return context[:MAX_CONTEXT_CHARS]
 
 
 def build_extraction_prompt(
@@ -118,25 +77,25 @@ Year: {year}
 Context:
 {context}
 
-Extract the following information:
+Extract the following information and return it as a JSON object with exactly these keys:
 
-1. Revenue
-2. Net Income
-3. Operating Income
-4. Cash Flow from Operating Activities
-5. Total Assets
-6. Total Liabilities
-7. Top Risk Factors
-8. Top Growth Drivers
+- "Revenue"
+- "Net Income"
+- "Operating Income"
+- "Cash Flow from Operating Activities"
+- "Total Assets"
+- "Total Liabilities"
+- "Top Risk Factors"
+- "Top Growth Drivers"
 
 Instructions:
 
 - Use only the provided context.
-- Return null if unavailable.
+- Return null for a key if the value is unavailable.
 - Financial values must match the report exactly.
 - Risk factors should be concise.
 - Growth drivers should be concise.
-- Return valid JSON only.
+- Return valid JSON only, using the exact keys listed above.
 """
 
 
@@ -172,15 +131,11 @@ def main() -> None:
     company = "Apple"
     year = 2024
 
-    vector_store = AzureAISearchVectorStore(
-        endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
-        api_key=os.getenv("AZURE_SEARCH_API_KEY"),
-        index_name=os.getenv("AZURE_SEARCH_INDEX_NAME")
+    vector_store = QdrantVectorStore(
+        collection_name=os.getenv("QDRANT_COLLECTION", "investor-intelligence")
     )
 
-    retriever = Retriever(
-        vector_store.client
-    )
+    retriever = vector_store.as_retriever(FastEmbedEmbeddings())
 
     results = extract_financial_metrics(
         retriever=retriever,

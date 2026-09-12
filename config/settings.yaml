@@ -2,15 +2,15 @@ frontend:
   api_url: http://localhost:8000
 
 backend:
-  azure_search:
-    endpoint: your-search-endpoint
-    api_key: your-search-key
-    index_name: investor-intelligence
-  azure_openai:
-    endpoint: your-openai-endpoint
-    api_key: your-openai-key
-  azure_sql:
-    server: your-sql-server
+  qdrant:
+    url: ""            # leave empty to use a local on-disk Qdrant (no server needed)
+    api_key: ""
+    collection_name: investor-intelligence
+  groq:
+    api_key: your-groq-key
+    model: openai/gpt-oss-120b
+  postgres:
+    host: your-postgres-host
     database: investor_intelligence
     username: your-username
     password: your-password

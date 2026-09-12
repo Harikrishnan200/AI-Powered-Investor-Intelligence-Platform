@@ -2,7 +2,7 @@
 
 <img width="1906" height="945" alt="RAGproject" src="https://github.com/user-attachments/assets/5024af81-e07e-47ed-a4ab-a40c439522f2" />
 
-This repository contains the Python backend for an AI-powered Investor Intelligence Platform, including document ingestion, semantic search, KPI extraction, Azure AI Search integration, Azure OpenAI integration, and PostgreSQL-based KPI storage.
+This repository contains the Python backend for an AI-powered Investor Intelligence Platform, including document ingestion, semantic search, KPI extraction (via Groq), Qdrant vector search, and PostgreSQL-based KPI storage. The whole stack runs free of cost: Groq's free-tier LLM API, a local on-disk Qdrant instance (no server/account needed), and local FastEmbed embeddings.
 
 ## Prerequisites
 
@@ -67,7 +67,7 @@ uv pip install -r requirements.txt
 
 ### 5. Configure Environment Variables
 
-Create a `.env` file and configure all required environment variables before running the application.
+Copy `.env.example` to `.env` and fill in the values (at minimum `GROQ_API_KEY` and your Postgres credentials — Qdrant works locally with no config).
 
 ---
 
@@ -82,8 +82,8 @@ python app.py
 ## Project Features
 
 * Annual Report Upload & Processing
-* KPI Extraction using Azure OpenAI
-* Azure AI Search Integration
+* KPI Extraction using Groq
+* Qdrant Vector Search Integration
 * Semantic Search & Retrieval
 * RAG-based Chatbot
 * PostgreSQL KPI Storage
@@ -101,18 +101,13 @@ python app.py
 
 ### AI Services
 
-* Azure OpenAI
-* Azure AI Search
+* Groq (LLM)
+* Qdrant (vector store — local on-disk by default, or a free Qdrant Cloud cluster)
+* FastEmbed (local embeddings, no API key)
 
 ### Database
 
-* Azure PostgreSQL
-
-### Deployment
-
-* Docker
-* Azure Container Registry (ACR)
-* Azure Kubernetes Service (AKS)
+* PostgreSQL
 
 ### Package Management
 
@@ -122,7 +117,7 @@ python app.py
 
 ## Notes
 
-* Ensure all Azure resources are configured before running the application.
-* Verify that PostgreSQL firewall rules allow access from the application.
+* Everything defaults to free/local: Qdrant runs on disk at `./qdrant_data` unless `QDRANT_URL` is set, and embeddings run locally via FastEmbed.
+* Get a free Groq API key at [console.groq.com](https://console.groq.com).
+* Verify that PostgreSQL is reachable from the application.
 * Store secrets in environment variables and never commit `.env` files to source control.
-* For production deployments, use Azure Key Vault or Kubernetes Secrets for secret management.

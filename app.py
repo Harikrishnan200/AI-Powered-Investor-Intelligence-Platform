@@ -29,9 +29,7 @@ def startup_event():
     
     try:
         create_index(
-            endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
-            api_key=os.getenv("AZURE_SEARCH_API_KEY"),
-            index_name=os.getenv("AZURE_SEARCH_INDEX_NAME")
+            collection_name=os.getenv("QDRANT_COLLECTION", "investor-intelligence")
         )
     except Exception as e:
         print(f"Warning: Could not create vector index: {e}")

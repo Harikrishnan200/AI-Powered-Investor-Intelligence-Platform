@@ -30,7 +30,7 @@ def chunk_markdown(
 
     Args:
         markdown_file: Markdown file path.
-        embeddings: Azure OpenAI embedding model.
+        embeddings: Embedding model (e.g. FastEmbedEmbeddings).
 
     Returns:
         List of semantic chunks.
@@ -45,25 +45,9 @@ def chunk_markdown(
     return splitter.create_documents([markdown_content])
 
 if __name__ == "__main__":
-    import os
-    from langchain_openai import AzureOpenAIEmbeddings
+    from llm.embeddings import FastEmbedEmbeddings
 
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    api_version = os.getenv("AZURE_OPENAI_API_EMBEDDING_VERSION", "2023-05-15")
-    embedding_model = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
-
-    if not endpoint or not api_key:
-        raise RuntimeError(
-            "Missing Azure OpenAI credentials. Set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY in .env."
-        )
-
-    embeddings = AzureOpenAIEmbeddings(
-        model = "text-embedding-ada-002",
-        azure_endpoint=endpoint,
-        api_key=api_key,
-        api_version=api_version
-    )
+    embeddings = FastEmbedEmbeddings()
 
     markdown_file = "../data/markdown/2024_Apple.md"
 

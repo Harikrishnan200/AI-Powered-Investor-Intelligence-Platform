@@ -4,40 +4,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from vectorstore.azure_ai_search import AzureAISearchVectorStore
+from llm.embeddings import FastEmbedEmbeddings
+from vectorstore.qdrant_store import QdrantVectorStore
 
 
 def search_vectorstore(query: str, top: int = 5):
-    endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
-    api_key = os.getenv("AZURE_SEARCH_API_KEY")
-    index_name = os.getenv("AZURE_SEARCH_INDEX_NAME")
+    collection_name = os.getenv("QDRANT_COLLECTION", "investor-intelligence")
 
-    if not endpoint or not api_key or not index_name:
-        raise RuntimeError(
-            "Missing Azure Search configuration. Set AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_API_KEY, and AZURE_SEARCH_INDEX_NAME in your .env."
-        )
-
-    store = AzureAISearchVectorStore(endpoint=endpoint, api_key=api_key, index_name=index_name)
-    results = list(store.client.search(query, top=top))
+    store = QdrantVectorStore(collection_name=collection_name)
+    retriever = store.as_retriever(FastEmbedEmbeddings())
+    results = retriever.invoke(query=query, top_k=top)
 
     print(f"Query: {query!r}")
     print(f"Top: {top}")
     print(f"Results: {len(results)}\n")
 
-    for idx, result in enumerate(results, start=1):
-        content = None
-        try:
-            content = result.get("content")
-        except Exception:
-            content = getattr(result, "content", None)
-
-        if content is None:
-            try:
-                content = result["content"]
-            except Exception:
-                content = str(result)
-
-        snippet = content.strip().replace("\n", " ") if isinstance(content, str) else "<no content>"
+    for idx, doc in enumerate(results, start=1):
+        snippet = doc.page_content.strip().replace("\n", " ")
         if len(snippet) > 350:
             snippet = snippet[:350].rstrip() + "..."
 
@@ -46,7 +29,7 @@ def search_vectorstore(query: str, top: int = 5):
         print("  " + "-" * 60)
 
     if not results:
-        print("No results returned. Verify your index contents or try a different query.")
+        print("No results returned. Verify your collection contents or try a different query.")
 
     return results
 

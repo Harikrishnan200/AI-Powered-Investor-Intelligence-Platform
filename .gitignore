@@ -11,6 +11,10 @@ ENV/
 env/
 .env
 .env.*
+!.env.example
+
+# Local Qdrant on-disk storage
+qdrant_data/
 
 # VS Code
 .vscode/
