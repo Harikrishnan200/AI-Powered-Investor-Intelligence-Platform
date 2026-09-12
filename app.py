@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -81,7 +82,7 @@ def metrics():
     Return KPI metrics.
     """
     return JSONResponse(
-        content=get_metrics()
+        content=jsonable_encoder(get_metrics())
     )
 
 

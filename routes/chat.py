@@ -8,6 +8,10 @@ from vectorstore.qdrant_store import QdrantVectorStore
 
 router = APIRouter()
 
+# Groq's free tier caps requests at ~8000 tokens/minute, so context is kept small.
+MAX_CONTEXT_CHARS = 10000
+TOP_K = 6
+
 class ChatRequest(BaseModel):
     question: str
     company: str | None = None
@@ -28,13 +32,15 @@ async def chat(request: ChatRequest):
             docs = retriever.invoke(
                 query=request.question,
                 company=request.company,
-                year=request.year
+                year=request.year,
+                top_k=TOP_K
             )
         else:
             docs = retriever.invoke(
-                query=request.question
+                query=request.question,
+                top_k=TOP_K
             )
-        context = "\n\n".join(doc.page_content for doc in docs)
+        context = "\n\n".join(doc.page_content for doc in docs)[:MAX_CONTEXT_CHARS]
 
         # Build chat prompt – include retrieved context and the user question
         prompt = f"You are an expert financial analyst. Use the following context from corporate reports to answer the user's question. If the context does not contain relevant information, politely indicate that you do not have enough data.\n\nContext:\n{context}\n\nUser Question: {request.question}\n\nAnswer:"
