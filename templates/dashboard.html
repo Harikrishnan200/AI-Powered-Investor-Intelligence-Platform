@@ -793,7 +793,7 @@ function appendMessage(role, text) {
     msgDiv.innerHTML = `
         <div class="chat-avatar ${role}-avatar">${avatarSvg}</div>
         <div class="chat-bubble ${role}-bubble">
-            <p>${escapeHtml(text)}</p>
+            <p>${role === 'bot' ? formatBotText(text) : escapeHtml(text)}</p>
         </div>
     `;
 
@@ -805,6 +805,15 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// LLM answers come back as light markdown (bold, newlines) — render it instead
+// of showing literal ** characters. Escapes first, so this stays XSS-safe.
+function formatBotText(str) {
+    return escapeHtml(str)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
 }
 
 let typingCounter = 0;
